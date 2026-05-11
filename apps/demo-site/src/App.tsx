@@ -9,59 +9,113 @@ import './App.css';
 
 gsap.registerPlugin(ScrollTrigger);
 
+const genericDesign = {
+  colors: {
+    bg: '#ffffff',
+    surface: '#f9fafb',
+    border: '#e5e7eb',
+    text: '#111827',
+    textSecondary: '#6b7280',
+    accent: '#3b82f6',
+    accentGlow: 'rgba(59, 130, 246, 0)',
+  },
+  typography: {
+    fontFamily: 'system-ui, -apple-system, sans-serif',
+    headingTracking: '0',
+    baseLeading: '1.5',
+    fontUrl: '',
+  },
+  rhythm: {
+    radius: '0px',
+    containerPadding: '60px',
+    itemGap: '24px',
+  },
+  atmosphere: {
+    shadowStrength: 0,
+    borderWidth: '1px',
+    glassmorphism: false,
+  }
+};
+
 function App() {
   const [activePreset, setActivePreset] = useState('apple');
+  const [isTransformed, setIsTransformed] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const presets = listPresets();
 
+  const applyDesign = useCallback((designObj: any, animate: boolean) => {
+    const root = document.documentElement;
+    
+    if (designObj.typography.fontUrl) {
+      let link = document.getElementById('fluxa-font-current') as HTMLLinkElement | null;
+      if (!link) {
+        link = document.createElement('link') as HTMLLinkElement;
+        link.id = 'fluxa-font-current';
+        link.rel = 'stylesheet';
+        document.head.appendChild(link);
+      }
+      link.href = designObj.typography.fontUrl;
+    }
+
+    root.style.setProperty('--font-heading', designObj.typography.fontFamily);
+    root.style.setProperty('--font-body', designObj.typography.fontFamily);
+
+    const vars = {
+      '--bg': designObj.colors.bg,
+      '--surface': designObj.colors.surface,
+      '--border': designObj.colors.border,
+      '--text': designObj.colors.text,
+      '--text-secondary': designObj.colors.textSecondary,
+      '--accent': designObj.colors.accent,
+      '--accent-glow': designObj.colors.accentGlow,
+      '--tracking-heading': designObj.typography.headingTracking,
+      '--leading-base': designObj.typography.baseLeading,
+      '--radius-container': designObj.rhythm.radius,
+      '--padding-container': designObj.rhythm.containerPadding,
+      '--gap-item': designObj.rhythm.itemGap,
+      '--shadow-strength': designObj.atmosphere.shadowStrength.toString(),
+      '--border-width': designObj.atmosphere.borderWidth,
+      '--glass-opacity': designObj.atmosphere.glassmorphism ? '0.02' : '0',
+    };
+
+    if (animate) {
+      gsap.to(root, {
+        ...vars,
+        duration: 1.2,
+        ease: 'power3.inOut'
+      });
+    } else {
+      Object.entries(vars).forEach(([key, value]) => {
+        root.style.setProperty(key, value as string);
+      });
+    }
+  }, []);
+
+  const triggerTransformation = () => {
+    const scanner = document.createElement('div');
+    scanner.className = 'ai-scanner';
+    document.body.appendChild(scanner);
+
+    gsap.fromTo(scanner, 
+      { top: '-20%' }, 
+      { 
+        top: '120%', 
+        duration: 1.5, 
+        ease: 'power2.inOut',
+        onComplete: () => scanner.remove()
+      }
+    );
+
+    setTimeout(() => {
+      setIsTransformed(true);
+    }, 400);
+  };
+
   const runAnimations = useCallback(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || !isTransformed) return;
     const container = containerRef.current;
     const preset = getPreset(activePreset);
     if (!preset) return;
-
-    // ── Inject Design Language ──
-    if ((preset as any).design) {
-      const design = (preset as any).design;
-      const root = document.documentElement;
-      
-      // Colors
-      root.style.setProperty('--bg', design.colors.bg);
-      root.style.setProperty('--surface', design.colors.surface);
-      root.style.setProperty('--border', design.colors.border);
-      root.style.setProperty('--text', design.colors.text);
-      root.style.setProperty('--text-secondary', design.colors.textSecondary);
-      root.style.setProperty('--accent', design.colors.accent);
-      root.style.setProperty('--accent-glow', design.colors.accentGlow);
-
-      // Typography
-      root.style.setProperty('--font-heading', design.typography.fontFamily);
-      root.style.setProperty('--font-body', design.typography.fontFamily);
-      root.style.setProperty('--tracking-heading', design.typography.headingTracking);
-      root.style.setProperty('--leading-base', design.typography.baseLeading);
-
-      // Rhythm
-      root.style.setProperty('--radius-container', design.rhythm.radius);
-      root.style.setProperty('--padding-container', design.rhythm.containerPadding);
-      root.style.setProperty('--gap-item', design.rhythm.itemGap);
-
-      // Atmosphere
-      root.style.setProperty('--shadow-strength', design.atmosphere.shadowStrength.toString());
-      root.style.setProperty('--border-width', design.atmosphere.borderWidth);
-      root.style.setProperty('--glass-opacity', design.atmosphere.glassmorphism ? '0.02' : '0');
-
-      // Inject Font URL
-      if (design.typography.fontUrl) {
-        let link = document.getElementById('fluxa-font-' + preset.name) as HTMLLinkElement | null;
-        if (!link) {
-          link = document.createElement('link') as HTMLLinkElement;
-          link.id = 'fluxa-font-' + preset.name;
-          link.rel = 'stylesheet';
-          link.href = design.typography.fontUrl;
-          document.head.appendChild(link);
-        }
-      }
-    }
 
     ScrollTrigger.getAll().forEach(t => t.kill());
     gsap.killTweensOf(container.querySelectorAll('*'));
@@ -194,29 +248,49 @@ function App() {
     });
   }, [activePreset]);
 
+  const hasAnimated = useRef(false);
+
   useEffect(() => {
-    runAnimations();
-    return () => ScrollTrigger.getAll().forEach(t => t.kill());
-  }, [runAnimations]);
+    if (!isTransformed) {
+      applyDesign(genericDesign, false);
+      return;
+    }
+
+    const preset = getPreset(activePreset);
+    if (preset && (preset as any).design) {
+      applyDesign((preset as any).design, true);
+    }
+
+    if (!hasAnimated.current) {
+      runAnimations();
+      hasAnimated.current = true;
+    }
+    
+    return () => {
+      // Don't kill scroll triggers on unmount here, they should persist across preset changes
+    };
+  }, [isTransformed, activePreset, applyDesign, runAnimations]);
 
   return (
     <div ref={containerRef} className="app">
       {/* ── Preset Nav ── */}
-      <nav className="preset-nav">
-        <span className="preset-nav__label">Style</span>
-        <div className="preset-nav__pills">
-          {presets.map((name) => (
-            <button
-              key={name}
-              className={`preset-pill ${name === activePreset ? 'preset-pill--active' : ''}`}
-              onClick={() => setActivePreset(name)}
-              style={name === activePreset ? { background: 'var(--accent)', color: 'var(--bg)' } : {}}
-            >
-              {name}
-            </button>
-          ))}
-        </div>
-      </nav>
+      {isTransformed && (
+        <nav className="preset-nav">
+          <span className="preset-nav__label">Style</span>
+          <div className="preset-nav__pills">
+            {presets.map((name) => (
+              <button
+                key={name}
+                className={`preset-pill ${name === activePreset ? 'preset-pill--active' : ''}`}
+                onClick={() => setActivePreset(name)}
+                style={name === activePreset ? { background: 'var(--accent)', color: 'var(--bg)' } : {}}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+        </nav>
+      )}
 
       {/* ── Hero ── */}
       <section className="hero">
@@ -230,8 +304,19 @@ function App() {
           Built with Fluxa Motion Engine.
         </p>
         <div className="hero__meta" data-fluxa-item>
-          <button className="badge" style={{ border: 'none', cursor: 'pointer', background: 'var(--accent)', color: 'var(--bg)' }}>Get Started</button>
-          <span className="badge badge--outline">v1.0.0</span>
+          {!isTransformed ? (
+            <button 
+              className="badge enhance-button" 
+              onClick={triggerTransformation}
+            >
+              Enhance with Fluxa ✨
+            </button>
+          ) : (
+            <>
+              <button className="badge" style={{ border: 'none', cursor: 'pointer', background: 'var(--accent)', color: 'var(--bg)' }}>Get Started</button>
+              <span className="badge badge--outline">v1.0.0</span>
+            </>
+          )}
         </div>
       </section>
 
