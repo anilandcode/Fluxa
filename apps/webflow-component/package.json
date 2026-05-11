@@ -1,0 +1,17 @@
+{
+  "name": "@fluxa/webflow-component",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "webflow:import": "webflow devlink import"
+  },
+  "dependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "@webflow/webflow-cli": "latest",
+    "@webflow/data-types": "latest",
+    "@webflow/react": "latest"
+  }
+}
