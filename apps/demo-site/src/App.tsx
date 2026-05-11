@@ -52,9 +52,9 @@ function App() {
 
       // Inject Font URL
       if (design.typography.fontUrl) {
-        let link = document.getElementById('fluxa-font-' + preset.name);
+        let link = document.getElementById('fluxa-font-' + preset.name) as HTMLLinkElement | null;
         if (!link) {
-          link = document.createElement('link');
+          link = document.createElement('link') as HTMLLinkElement;
           link.id = 'fluxa-font-' + preset.name;
           link.rel = 'stylesheet';
           link.href = design.typography.fontUrl;
