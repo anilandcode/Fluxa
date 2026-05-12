@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import Lenis from 'lenis';
 import {
   listPresets,
   getPreset,
@@ -97,11 +98,12 @@ function App() {
     document.body.appendChild(scanner);
 
     gsap.fromTo(scanner, 
-      { top: '-20%' }, 
+      { yPercent: -100 }, 
       { 
-        top: '120%', 
+        yPercent: 120, 
         duration: 1.5, 
         ease: 'power2.inOut',
+        force3D: true,
         onComplete: () => scanner.remove()
       }
     );
@@ -137,6 +139,7 @@ function App() {
           duration: preset.duration.slow,
           ease: preset.ease.enter,
           stagger: preset.stagger.amount,
+          force3D: true,
         });
 
         // ── Bento Cards ──
@@ -147,10 +150,12 @@ function App() {
             y: distance * 1.2,
             duration: preset.duration.normal,
             ease: preset.ease.enter,
+            force3D: true,
             scrollTrigger: {
               trigger: card,
               start: 'top 90%',
               toggleActions: 'play none none reverse',
+              fastScrollEnd: true,
             },
           });
         });
@@ -164,9 +169,11 @@ function App() {
           duration: preset.duration.slow * 1.2,
           ease: preset.ease.enter,
           stagger: preset.stagger.amount * 1.5,
+          force3D: true,
           scrollTrigger: {
             trigger: '.type-showcase',
             start: 'top 85%',
+            fastScrollEnd: true,
           },
         });
 
@@ -176,11 +183,13 @@ function App() {
           gsap.to(shape, {
             y: (i + 1) * -300 * preset.parallax.strength,
             rotation: i * 50 * preset.parallax.strength,
+            force3D: true,
             scrollTrigger: {
               trigger: '.parallax-container',
               start: 'top bottom',
               end: 'bottom top',
               scrub: preset.scroll.scrub,
+              fastScrollEnd: true,
             },
           });
         });
@@ -199,6 +208,7 @@ function App() {
           duration: preset.duration.slow * durationMod,
           ease: preset.ease.enter,
           stagger: preset.stagger.amount * staggerMod,
+          force3D: true,
         });
 
         const cards = container.querySelectorAll('.card-shell');
@@ -208,10 +218,12 @@ function App() {
             y: distance * 1.2,
             duration: preset.duration.normal * durationMod,
             ease: preset.ease.enter,
+            force3D: true,
             scrollTrigger: {
               trigger: card,
               start: 'top 95%',
               toggleActions: 'play none none reverse',
+              fastScrollEnd: true,
             },
           });
         });
@@ -224,9 +236,11 @@ function App() {
           duration: preset.duration.slow * durationMod,
           ease: preset.ease.enter,
           stagger: preset.stagger.amount * staggerMod,
+          force3D: true,
           scrollTrigger: {
             trigger: '.type-showcase',
             start: 'top 90%',
+            fastScrollEnd: true,
           },
         });
 
@@ -234,11 +248,13 @@ function App() {
         shapes.forEach((shape, i) => {
           gsap.to(shape, {
             y: (i + 1) * -100 * preset.parallax.strength, // Reduced parallax translation, no rotation
+            force3D: true,
             scrollTrigger: {
               trigger: '.parallax-container',
               start: 'top bottom',
               end: 'bottom top',
               scrub: preset.scroll.scrub,
+              fastScrollEnd: true,
             },
           });
         });
@@ -249,6 +265,30 @@ function App() {
   }, [activePreset]);
 
   const hasAnimated = useRef(false);
+
+  useEffect(() => {
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      orientation: 'vertical',
+      gestureOrientation: 'vertical',
+      smoothWheel: true,
+      touchMultiplier: 2,
+    });
+
+    lenis.on('scroll', ScrollTrigger.update);
+
+    gsap.ticker.add((time) => {
+      lenis.raf(time * 1000);
+    });
+
+    gsap.ticker.lagSmoothing(0);
+
+    return () => {
+      lenis.destroy();
+      gsap.ticker.remove(lenis.raf);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isTransformed) {
